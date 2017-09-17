@@ -1,0 +1,457 @@
+<style>body{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;color:#555;font-family:sans-serif}
+small{font-weight:400;display:block;font-size:14px}
+code{background-color:#d3d3d3;border-radius:3px;font-family:monospace;padding:0 .5em}
+.icon.-facebook:before,.icon.-linkedin:before,.icon.-pinterest:before,.icon.-twitter:before{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-family:Post-Creator-Icons;font-style:normal;font-variant:normal;font-weight:400;line-height:1;speak:none;text-transform:none}
+@font-face{font-family:Post-Creator-Icons;src:url(fonts/Post-Creator-Icons.eot);src:url(fonts/Post-Creator-Icons.eot?#iefix) format('embedded-opentype'),url(fonts/Post-Creator-Icons.woff) format('woff'),url(fonts/Post-Creator-Icons.ttf) format('truetype'),url(fonts/Post-Creator-Icons.svg#Post-Creator-Icons) format('svg');font-weight:400;font-style:normal}
+.icon.-facebook:before{content:"\e001"}
+.icon.-linkedin:before{content:"\e002"}
+.icon.-pinterest:before{content:"\e003"}
+.icon.-twitter:before{content:"\e004"}
+.social-icons h4{display:inline-block;margin:20px 10px 0 0}
+.social-icons .icon{display:inline-block;margin:0 5px}
+body.modal-open{overflow:hidden}
+.jsoneditor table,.jsoneditor td,.jsoneditor td.tree,.jsoneditor tr{border:none;margin:0}</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.1/css/selectize.default.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/4.2.0/jsoneditor.min.css"/>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-10">
+            <input type="text" id="variable-selector">
+        </div>
+        <div class="col-sm-2">
+            <button class="btn btn-default pull-right" type="submit" id="settings-button">Settings</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="collapse col-xs-12" id="settings-collapse">
+            <div class="panel panel-default" style="margin-top: 20px">
+                <div class="panel-heading"><h3 class="panel-title">Adjust chart settings</h3></div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div id="jsoneditor" class="col-md-12" style="height: 350px"></div>
+                    </div>
+                    <div class="row" style="margin-top: 10px">
+                        <div class="col-sm-4">
+                            <button type="button" class="btn btn-primary" id="save-settings">
+                                Apply changes
+                            </button>
+                        </div>
+                        <div class="col-sm-8 text-right ">
+                            <form class="form-inline">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="options-input"
+                                               placeholder="settings" style="text-align: right">
+                                        <div class="input-group-addon"><strong>.json</strong></div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary" id="options-button">Save</button>
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div id="chart-container" style="min-width: 310px;"></div>
+    </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.18/require.min.js"></script>
+
+
+
+
+
+
+<script>(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+//findIndex polyfill
+if (!Array.prototype.findIndex) {
+    Array.prototype.findIndex = function(predicate) {
+        if (this == null) {
+            throw new TypeError('Array.prototype.findIndex called on null or undefined');
+        }
+        if (typeof predicate !== 'function') {
+            throw new TypeError('predicate must be a function');
+        }
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+
+        for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) {
+                return i;
+            }
+        }
+        return -1;
+    };
+}
+
+if (!Array.prototype.filter) {
+    Array.prototype.filter = function(fun/*, thisArg*/) {
+        'use strict';
+
+        if (this === void 0 || this === null) {
+            throw new TypeError();
+        }
+
+        var t = Object(this);
+        var len = t.length >>> 0;
+        if (typeof fun !== 'function') {
+            throw new TypeError();
+        }
+
+        var res = [];
+        var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+        for (var i = 0; i < len; i++) {
+            if (i in t) {
+                var val = t[i];
+
+                // NOTE: Technically this should Object.defineProperty at
+                //       the next index, as push can be affected by
+                //       properties on Object.prototype and Array.prototype.
+                //       But that method's new, and collisions should be
+                //       rare, so use the more-compatible alternative.
+                if (fun.call(thisArg, val, i, t)) {
+                    res.push(val);
+                }
+            }
+        }
+
+        return res;
+    };
+}
+
+function guid() {
+    function s4() {
+        return Math.floor((1 + Math.random()) * 0x10000)
+            .toString(16)
+            .substring(1);
+    }
+    return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+        s4() + '-' + s4() + s4() + s4();
+}
+
+Array.prototype.equals = function (array) {
+    // if the other array is a false value, return
+    if (!array)
+        return false;
+
+    // compare lengths - can save a lot of time
+    if (this.length != array.length)
+        return false;
+
+    for (var i = 0, l = this.length; i < l; i++) {
+        // Check if we have nested arrays
+        if (this[i] instanceof Array && array[i] instanceof Array) {
+            // recurse into the nested arrays
+            if (!this[i].equals(array[i]))
+                return false;
+        }
+        else if (this[i] != array[i]) {
+            // Warning - two different object instances will never be equal: {x:20} != {x:20}
+            return false;
+        }
+    }
+    return true;
+};
+
+},{}]},{},[1]);
+</script>
+<script>(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+
+
+requirejs.config({
+    "paths": {
+        "highstock": "https://cdnjs.cloudflare.com/ajax/libs/highstock/2.1.5/highstock",
+        "export": "https://cdnjs.cloudflare.com/ajax/libs/highstock/2.1.5/modules/exporting",
+        "more": "https://cdnjs.cloudflare.com/ajax/libs/highstock/2.1.7/highcharts-more",
+        "jsoneditor": "https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/4.2.0/jsoneditor.min",
+        "selectize": "https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.1/js/standalone/selectize.min",
+        "jquery": "https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min"
+    },
+    "shim": {
+        "export": ["highstock"],
+        "more": ["highstock"]
+    }
+});
+
+//Define jquery here to use the pre-loaded version
+define('jquery', [], function() {
+    return jQuery;
+});
+
+},{}]},{},[1]);
+</script>
+<script>(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+//Count the number of charts on the page
+if (window.counter == undefined) {
+    window.counter = 0;
+} else {
+    window.counter++;
+}
+
+requirejs([
+    'jquery',
+    'selectize',
+    'jsoneditor',
+    'highstock',
+    'export',
+    'more'
+], function ($, selectize, JSONEditor) {
+
+    function guid() {
+        function s4() {
+            return Math.floor((1 + Math.random()) * 0x10000)
+                .toString(16)
+                .substring(1);
+        }
+
+        return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+            s4() + '-' + s4() + s4() + s4();
+    }
+
+    var id = guid();
+    plot(id);
+
+    function plot(id) {
+        var series = [
+            {data: [1, 2, 4, 9], name: "temperature 1", display: true, color: '#2b908f'},
+            {data: [9, 4, 2, 1], name: "temperature 2", display: true},
+            {data: [0, 3, 5, 6], name: "temperature 3", display: false}
+        ];
+        var series = [{"name": "4\u5ba42\u53853\u536b", "data": [345.0, 165.0, 450.0, 380.0, 647.2, 312.0, 850.0, 385.0, 665.0, 771.6, 1245.7142857142858, 1750.0, 662.4, 888.0, 1828.0, 1012.0, 394.0, 1323.3333333333333, 275.0, 308.5], "display": true}, {"name": "1\u5ba41\u53851\u536b", "data": [132.66666666666666, 175.0, 180.14285714285714, 150.0, 80.0, 127.0, 110.3, 115.0, 137.45454545454547, 159.45454545454547, 155.375, 72.5, 162.14285714285714, 187.66666666666666, 134.0, 133.72727272727272, 249.22222222222223, 174.8, 184.5, 147.68421052631578, 143.73684210526315, 87.6, 84.40625, 54.02857142857143, 62.44186046511628, 72.11666666666666, 60.18681318681319, 54.017857142857146], "display": true}, {"name": "5\u5ba42\u53853\u536b", "data": [350.0, 830.0, 1280.0, 840.0, 790.0, 950.0, 1060.0, 677.5, 2500.0, 742.5, 1810.0, 860.0, 855.0, 876.25, 420.0, 377.5, 570.0, 2988.0, 4019.0, 550.0], "display": true}, {"name": "3\u5ba41\u53852\u536b", "data": [440.0, 245.0, 370.0, 226.0, 310.4, 315.0, 335.0, 200.0, 298.3333333333333, 270.0, 553.3333333333334, 925.0, 520.0, 271.5, 331.0, 160.0, 485.0, 221.0, 60.0, 85.5, 87.28571428571429], "display": true}, {"name": "3\u5ba42\u53852\u536b", "data": [780.0, 503.0, 430.0, 511.4, 291.22222222222223, 254.4, 273.38461538461536, 306.7142857142857, 360.7916666666667, 354.04761904761904, 322.258064516129, 383.2894736842105, 319.55357142857144, 408.09375, 351.625, 388.6896551724138, 434.0833333333333, 394.6835443037975, 328.2, 293.03370786516854, 239.45238095238096, 230.4915254237288, 214.72881355932202, 241.0, 212.63235294117646, 123.29166666666667, 167.2127659574468], "display": true}, {"name": "2\u5ba42\u53851\u536b", "data": [261.22222222222223, 120.0, 271.0, 164.66666666666666, 271.5, 193.8913043478261, 188.1764705882353, 204.3, 178.28571428571428, 182.2127659574468, 258.5897435897436, 258.1923076923077, 331.53125, 236.94285714285715, 302.71794871794873, 312.8636363636364, 280.3421052631579, 349.9, 286.6216216216216, 251.10526315789474, 188.33333333333334, 189.35714285714286, 173.78048780487805, 176.36, 180.33333333333334, 105.71428571428571, 129.02702702702703, 126.3], "display": true}, {"name": "2\u5ba41\u53851\u536b", "data": [207.77777777777777, 195.0, 232.15384615384616, 192.07142857142858, 200.4, 187.91935483870967, 151.55172413793105, 167.17777777777778, 187.02898550724638, 195.04, 221.2153846153846, 227.6153846153846, 260.3529411764706, 246.45454545454547, 221.05, 247.58333333333334, 307.70588235294116, 218.46153846153845, 289.7826086956522, 114.72727272727273, 202.27777777777777, 199.25, 164.35294117647058, 187.47058823529412, 110.60714285714286, 95.86206896551724, 99.0, 108.28571428571429], "display": true}, {"name": "2\u5ba42\u53852\u536b", "data": [320.0, 130.0, 318.0, 285.0, 414.0, 168.0, 214.85714285714286, 323.3333333333333, 580.0, 562.5, 232.66666666666666, 379.3333333333333, 324.0, 106.875, 89.5, 111.0, 155.0, 50.5, 85.0], "display": true}, {"name": "4\u5ba42\u53851\u536b", "data": [420.0, 600.0, 559.3333333333334, 662.6666666666666, 160.0, 134.0, 636.6666666666666, 850.0, 426.0, 250.0, 597.5, 195.0, 346.0, 305.0, 436.0, 28.0], "display": true}, {"name": "\u5176\u4ed6", "data": [174.0, 541.2, 97.5, 416.0, 248.0, 467.0, 223.0, 1417.8181818181818, 736.25, 685.7, 840.6875, 1798.2105263157894, 805.5454545454545, 530.2666666666667, 453.57142857142856, 1340.3333333333333, 853.0, 2688.4444444444443, 539.8571428571429, 1492.4074074074074, 1055.4545454545455, 687.2142857142857, 274.2083333333333, 958.4736842105264, 792.3125], "display": true}, {"name": "3\u5ba42\u53851\u536b", "data": [392.1111111111111, 390.5, 274.9, 262.0, 262.02564102564105, 302.5882352941176, 282.76, 238.9787234042553, 219.975, 320.6363636363636, 287.51851851851853, 278.6060606060606, 342.8709677419355, 338.72222222222223, 331.22222222222223, 352.53846153846155, 409.1666666666667, 327.3921568627451, 244.77777777777777, 277.0689655172414, 332.8, 196.6046511627907, 217.74193548387098, 252.23809523809524, 153.9298245614035, 139.72413793103448, 141.31578947368422], "display": true}, {"name": "3\u5ba41\u53851\u536b", "data": [261.5, 510.0, 485.0, 313.0, 152.25, 251.86666666666667, 217.85714285714286, 259.3076923076923, 243.92307692307693, 265.4736842105263, 279.55172413793105, 297.375, 238.88888888888889, 355.0, 278.05882352941177, 286.93333333333334, 392.42857142857144, 271.5, 275.0625, 493.5, 297.1, 250.85714285714286, 191.16666666666666, 196.14285714285714, 152.71428571428572, 67.5, 242.0], "display": true}, {"name": "4\u5ba42\u53852\u536b", "data": [690.0, 730.0, 512.0, 562.5, 468.6, 382.6666666666667, 456.14285714285717, 509.09090909090907, 580.8333333333334, 482.7142857142857, 723.6, 528.8888888888889, 495.6190476190476, 504.44444444444446, 680.7142857142857, 700.6551724137931, 381.7857142857143, 471.8333333333333, 477.8888888888889, 296.45454545454544, 335.42857142857144, 358.3157894736842, 240.04545454545453, 364.3333333333333, 290.0], "display": true}]
+        var options = {};
+        var options = {"width": "auto", "height": 400, "scale": 2, "type": "line", "chart": {"zoomType": "xy", "type": "line"}, "title": {"text": "\u5e7f\u5dde\u5404\u6237\u578b\u4e8c\u624b\u623f\u57281990-2017\u5e74\u7684\u5e73\u5747\u4ef7\u683c\u53d8\u5316\u56fe"}, "xAxis": {"categories": ["1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017"], "title": {"text": "\u5e74\u4ee3"}}, "yAxis": {"title": {"text": "\u4ef7\u683c\uff08\u4e07\u5143\uff09"}, "min": 0}, "plotOptions": {"line": {"dataLabels": {"enabled": "true", "color": "#000000"}}}}
+        var useHighStock = false;
+        var useHighStock = false
+        var save = 'app/chart.svg';
+        var save = false
+        var url = 'http://127.0.0.1:65079';
+        var url = "http://127.0.0.1:52263/"
+        var settingsFile = 'settings';
+        var settingsFile = "settings"
+        var scale = options.scale;
+
+        //Create different containers for the charts
+        var chartContainer = document.getElementById("chart-container");
+        chartContainer.id = "chart-container" + id;
+        chartContainer.style.height = options.height.toString() + 'px';
+
+        if (options.width != 'auto') {
+            chartContainer.style.width = options.width.toString() + 'px';
+        }
+
+        var selector = $("#variable-selector");
+        selector.attr('id', "variable-selector" + id);
+
+        var settings = $("#settings-collapse");
+        settings.attr('id', "settings-collapse" + id);
+
+        var button = $("#settings-button");
+        button.attr('id', "settings-button" + id);
+
+        var saveButton = $("#save-settings");
+        saveButton.attr('id', "save-settings" + id);
+
+        var optionsInput = $("#options-input");
+        optionsInput.attr('id', "options-input" + id);
+        optionsInput.val(settingsFile);
+
+        var optionsButton = $("#options-button");
+        optionsButton.attr('id', "options-button" + id);
+
+        // create the editor
+        var editorContainer = document.getElementById("jsoneditor");
+        editorContainer.id = "jsoneditor" + id;
+        var editor = new JSONEditor(editorContainer);
+
+        button.on('click', showSettings);
+        saveButton.on('click', applyOptions);
+        optionsButton.on('click', saveOptions);
+
+        function applyOptions() {
+            var newOptions = editor.get();
+            setOptions(newOptions);
+            settings.collapse('hide');
+        }
+
+        function saveOptions(event) {
+            event.preventDefault();
+
+            applyOptions();
+
+            var options = chart.options;
+            delete options.exporting;
+
+            var name = optionsInput.val() ? optionsInput.val() + '.json' : 'settings.json';
+
+            options['settingsFile'] = name;
+
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: JSON.stringify({
+                    options: options,
+                    name: name
+                })
+            });
+        }
+
+        function showSettings() {
+            settings.collapse('toggle');
+        }
+
+        //Choose a chart type
+        var ChartType = useHighStock ? Highcharts.StockChart : Highcharts.Chart;
+
+        //Default highchart colors
+        var colors = ['#7cb5ec', '#434348', '#90ed7d', '#f7a35c', '#8085e9',
+            '#f15c80', '#e4d354', '#2b908f', '#f45b5b', '#91e8e1'];
+
+        series.map(function (serie, index) {
+            if (!serie.color) {
+                serie['color'] = colors[index % 10];
+            }
+
+            return serie;
+        });
+
+        //Get all the keys
+        var keys = [];
+        var initialKeys = [];
+        $.each(series, function (index, serie) {
+            keys.push({
+                display: serie.display,
+                value: serie.name,
+                text: serie.name
+            });
+
+            if (serie.display) {
+                initialKeys.push(serie.name)
+            }
+        });
+
+        selector.selectize({
+            plugins: ['remove_button', 'restore_on_backspace'],
+            delimiter: ',',
+            options: keys,
+            items: initialKeys,
+            onItemAdd: function (key) {
+                console.log('series added');
+                addSeries(key);
+                newChart(chart.options, renderedSeries);
+            },
+            onItemRemove: function (key) {
+                console.log('series removed');
+                deleteSeries(key);
+                newChart(chart.options, renderedSeries);
+            }
+        });
+
+        //Set initial chart options
+        var chartOptions;
+        if (typeof options.chart === "undefined") {
+            chartOptions = {renderTo: chartContainer.id};
+        } else {
+            chartOptions = $.extend(options["chart"], {renderTo: chartContainer.id});
+        }
+
+        //Initial rendered series
+        var renderedSeries = [];
+        options = $.extend(options, {chart: chartOptions}, {series: renderedSeries});
+        var chart = new ChartType(options);
+
+        $.each(initialKeys, function (index, key) {
+            addSeries(key);
+        });
+
+        newChart(chart.options, renderedSeries);
+        editor.set(chart.options);
+
+        if (save) {
+            saveSVG(url, save)
+        }
+
+        function setOptions(options) {
+            //Prevent export from breaking
+            delete options.exporting;
+            options['exporting'] = {scale: options.scale};
+
+            chartContainer.style.height = options.height.toString() + 'px';
+
+            if (options.width != 'auto') {
+                chartContainer.style.width = options.width.toString() + 'px';
+            }
+
+            newChart(options, renderedSeries);
+
+        }
+
+        function findSeries(series, key) {
+            return series.findIndex(function (obj) {
+                return obj.name == key;
+            })
+        }
+
+        function newChart(options, series) {
+            //Disable animation
+            var newOptions = $.extend(options, {series: series});
+            newOptions.plotOptions['series'] = {animation: false};
+
+            //Get zoom
+            var xExtremes = chart.xAxis[0].getExtremes();
+
+            //Re-plot the chart
+            chart.destroy();
+            chart = new ChartType(newOptions);
+
+            //Reset the zoom
+            chart.xAxis[0].setExtremes(xExtremes.min, xExtremes.max, false, false);
+
+            //Re-draw chart
+            chart.redraw();
+        }
+
+        function addSeries(key) {
+            var index = findSeries(series, key);
+            var newSeries = series[index];
+            renderedSeries.push(newSeries)
+        }
+
+        function deleteSeries(key) {
+            var index = findSeries(renderedSeries, key);
+            renderedSeries.splice(index, 1)
+        }
+
+        function saveSVG(url, name) {
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: JSON.stringify({
+                    svg: chart.getSVG(),
+                    name: name
+                })
+            });
+        }
+
+        console.log('loaded!', Date());
+    }
+
+});
+
+},{}]},{},[1]);
+</script>
+
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css"/>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
